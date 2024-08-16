@@ -1,3 +1,4 @@
+name: Deploy Apache Web Server to Azure
 
 on:
   push:
@@ -5,35 +6,48 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: your-app-name    # set this to your application's name
-  AZURE_WEBAPP_PACKAGE_PATH: '.'      # set this to the path to your web app project, defaults to the repository root
-  NODE_VERSION: '16.x'                # set this to the node version to use
-
-permissions:
-  contents: read
+  AZURE_WEBAPP_NAME: your-app-name  # Set this to your Azure Web App name
+  AZURE_WEBAPP_PACKAGE_PATH: '.'    # Path to your web app project; defaults to the repo root
+  AZURE_PUBLISH_PROFILE: ${{ secrets.AZURE_PUBLISH_PROFILE }}  # Azure Publish Profile stored as a secret
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
+    - name: Set up Apache
+      run: sudo apt-get update && sudo apt-get install -y apache2
 
-    - name: npm install, build, and test
+    - name: Verify Apache Installation
+      run: apache2 -v
+
+    - name: Archive the application
       run: |
-        npm install
-        npm run build --if-present
-        npm run test --if-present
+        zip -r webapp.zip ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
     - name: Upload artifact for deployment job
       uses: actions/upload-artifact@v3
       with:
-        name: node-app
+        name: webapp
+        path: webapp.zip
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download artifact from build job
+      uses: actions/download-artifact@v3
+      with:
+        name: webapp
         path: .
 
-  
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        package: webapp.zip
+        publish-profile: ${{ env.AZURE_PUBLISH_PROFILE }}
