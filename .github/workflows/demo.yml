@@ -48,6 +48,6 @@ env:
    - name: Deploy to github
      uses: peaceiris/actions-gh-pages@v3
      with:
-      github_token: ${{ secrets.Token}}
+      github_token: ${{ secrets.DEMO}}
       publish_dir: ./build
       
