@@ -50,4 +50,10 @@ env:
      with:
       github_token: ${{ secrets.DEMO}}
       publish_dir: ./build
-      
+   - name: Deploy
+     uses:appleboy//ssh-action@v0.1.10
+     with:
+      host: ${{ secrets.SERVER_HOST}}
+      username: ${{ secrets.SERVER_USERNAME}}
+      password: ${{ secrets.SERVER_PASSWORD}}
+      port: 22
