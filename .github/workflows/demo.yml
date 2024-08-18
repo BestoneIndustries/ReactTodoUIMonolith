@@ -1,21 +1,60 @@
+name: build
+
 on:
  push:
   branches:
    - main
+env:
+ CI: false
+  jobs:
+   build:
+   name: Build
+   runs-on: ubuntu-latest
 
-jobs:bu
- run_pull:
-name:run pull
-runs_on: ubuntu-latest
+  steps:
+   - name: Checkout repo
+     uses: actions/checkout@v2
 
-steps:
-- name: install ssh keys
-  run:  |
-    install -m 600 -D /dev/null ~/.ssh/id_rsa
-    echo "${{ secrets.SSH_PRIVATE_KEY}}" > !/.ssh/id_rsa
-    ssh-keyscan -H ${{ secrets.SERVER_HOST}} > ~/.ssh/known_hosts
-- name: connect and pull
-  run: ssh ${{ secrets.SERVER_USERNAME}}@${{ secrets.SERVER_HOST}}
-- name: cleanup
-  run: rm -rf~/.ssh
+   - name: Setup Node
+     uses: actions/setup-node@v1
+     with:
+       node-version:16
 
+   - name: Install dependencies
+     uses: baheutov/npm-install@v1
+
+   - name: Build Project
+      run:npm run build
+   - name: Upload Production-read build files
+     uses: actions/upload-artifact@v2
+     with:
+      name: production-files
+      path: ./build
+
+
+ deploy:
+  name: Deploy
+  needs: build
+  runs-on: ubuntu-latest
+  if: github.ref == 'refs/heads/main'
+
+  steps:
+   - name: Download artifact
+     uses:actions/download-artifact@v2
+     with:
+      name: production-files
+      path: ./build
+      
+   - name: Deploy to github
+     uses: peaceiris/actions-gh-pages@v3
+     with:
+      github_token: ${{ secrets.DEMO}}
+      publish_dir: ./build
+   - name: Deploy
+     uses:appleboy//ssh-action@v0.1.10
+     with:
+      host: ${{ secrets.SERVER_HOST}}
+      sshprivatekey:  ${{ secrets.SSH_PRIVATE_KEY}}
+      username: ${{ secrets.SERVER_USERNAME}}
+      password: ${{ secrets.SERVER_PASSWORD}}
+      
